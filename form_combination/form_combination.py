@@ -5,19 +5,25 @@ import csv
 def read_list_from_file(input_file_path):
     """assume the input file contains a list separated by lines"""
     with open(input_file_path, "r") as f:
-        return [line.strip() for line in f]
+        lines = [line.strip() for line in f]
+        return lines[0], lines[1:]
 
 
 def form_combinations():
     count = 0
-    with open("output.csv", "w") as csvfile:
-        for a in read_list_from_file("a.txt"):
-            for b in read_list_from_file("b.txt"):
-                for c in read_list_from_file("c.txt"):
+    header_a, list_a = read_list_from_file("a.txt")
+    header_b, list_b = read_list_from_file("b.txt")
+    header_c, list_c = read_list_from_file("c.txt")
+    output_file_name = "output_{}_{}_{}.csv".format(header_a, header_b, header_c)
+    with open(output_file_name, "w") as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+        writer.writerow([header_a, header_b, header_c])
+        for a in list_a:
+            for b in list_b:
+                for c in list_c:
                     count += 1
-                    writer = csv.writer(csvfile, delimiter=',')
                     writer.writerow([a, b, c])
-    print("output.csv has {} rows".format(count))
+    print("{} has {} rows".format(output_file_name, count))
 
 
 def main():
