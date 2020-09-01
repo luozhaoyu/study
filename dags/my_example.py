@@ -35,6 +35,14 @@ start1 = KubernetesPodOperator(
     task_id="start1",
     get_logs=True,
     dag=dag,
+    executor_config={
+        "KubernetesExecutor": {
+            "request_cpu": "99m",
+            "limit_cpu": "1",
+            "request_memory": "99Mi",
+            "limit_memory": "1Gi",
+        }
+    },
 )
 
 start2 = KubernetesPodOperator(
