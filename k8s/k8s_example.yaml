@@ -1,0 +1,549 @@
+---
+# Source: zhaoyu-example/templates/rbac/zhaoyu-example-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zhaoyu-example
+  labels:
+    app: zhaoyu-example
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+---
+# Source: zhaoyu-example/charts/postgresql/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zhaoyu-example-postgresql
+  labels:
+    app: postgresql
+    chart: postgresql-8.6.4
+    release: "zhaoyu-example"
+    heritage: "Helm"
+type: Opaque
+data:
+  postgresql-password: "abcd1234"
+---
+# Source: zhaoyu-example/templates/config/secret-config.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zhaoyu-example-config
+  labels:
+    app: zhaoyu-example
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+stringData:
+  ## ================
+  ## Linux Configs
+  ## ================
+  TZ: "Etc/UTC"
+---
+# Source: zhaoyu-example/templates/config/secret-webserver-config.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zhaoyu-example-webserver-config
+  labels:
+    app: zhaoyu-example
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+stringData:
+  webserver_config.py: |-
+    import os
+---
+# Source: zhaoyu-example/templates/config/configmap-pod-template.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zhaoyu-example-pod-template
+  labels:
+    app: zhaoyu-example
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+data:
+  pod_template.yaml: |-
+    
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: dummy-name
+---
+# Source: zhaoyu-example/templates/rbac/zhaoyu-example-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zhaoyu-example
+  labels:
+    app: zhaoyu-example
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - "get"
+  - "list"
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - "create"
+  - "get"
+  - "delete"
+  - "list"
+  - "patch"
+  - "watch"
+- apiGroups:
+  - ""
+  resources:
+  - "pods/log"
+  verbs:
+  - "get"
+  - "list"
+- apiGroups:
+  - ""
+  resources:
+  - "pods/exec"
+  verbs:
+  - "create"
+  - "get"
+---
+# Source: zhaoyu-example/templates/rbac/zhaoyu-example-rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zhaoyu-example
+  labels:
+    app: zhaoyu-example
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zhaoyu-example
+subjects:
+- kind: ServiceAccount
+  name: zhaoyu-example
+  namespace: zhaoyuluo
+---
+# Source: zhaoyu-example/charts/postgresql/templates/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: zhaoyu-example-postgresql-headless
+  labels:
+    app: postgresql
+    chart: postgresql-8.6.4
+    release: "zhaoyu-example"
+    heritage: "Helm"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: tcp-postgresql
+      port: 4444
+      targetPort: tcp-postgresql
+  selector:
+    app: postgresql
+    release: "zhaoyu-example"
+---
+# Source: zhaoyu-example/charts/postgresql/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: zhaoyu-example-postgresql
+  labels:
+    app: postgresql
+    chart: postgresql-8.6.4
+    release: "zhaoyu-example"
+    heritage: "Helm"
+spec:
+  type: ClusterIP
+  ports:
+    - name: tcp-postgresql
+      port: 4444
+      targetPort: tcp-postgresql
+  selector:
+    app: postgresql
+    release: "zhaoyu-example"
+    role: master
+---
+# Source: zhaoyu-example/templates/webserver/webserver-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: zhaoyu-example-web
+  labels:
+    app: zhaoyu-example
+    component: web
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+spec:
+  type: ClusterIP
+  selector:
+    app: zhaoyu-example
+    component: web
+    release: zhaoyu-example
+  sessionAffinity: None
+  ports:
+    - name: web
+      protocol: TCP
+      port: 8888
+      targetPort: 80
+---
+# Source: zhaoyu-example/templates/webserver/webserver-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zhaoyu-example-web
+  labels:
+    app: zhaoyu-example
+    component: web
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      ## multiple web pods can safely run concurrently
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: zhaoyu-example
+      component: web
+      release: zhaoyu-example
+  template:
+    metadata:
+      annotations:
+        ad.datadoghq.com/zhaoyu-example-web.check_names: |
+          ["prometheus", "zhaoyu-example"]
+        ad.datadoghq.com/zhaoyu-example-web.init_configs: |
+          [{}, {}]
+        ad.datadoghq.com/zhaoyu-example-web.instances: |
+          [
+            {
+              "metrics": ["*"],
+              "namespace": "zhaoyu-example",
+              "prometheus_url": "http://%%host%%:8080/admin/metrics/"
+            },
+            {
+              "url": "http://%%host%%:%%port%%",
+              "tls_verify": "false"
+            }
+          ]
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        app: zhaoyu-example
+        component: web
+        release: zhaoyu-example
+    spec:
+      restartPolicy: Always
+      serviceAccountName: zhaoyu-example
+      securityContext:
+        fsGroup: 50000
+      initContainers:        
+        - name: wait-for-db-migrations  
+          image: busybox:stable
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 2
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            runAsUser: 50000
+            runAsGroup: 50000
+          command:
+            - "echo"
+          args:
+            - "wait-for-db-migrations"
+      containers:
+        - name: zhaoyu-example-web          
+          image: nginx:stable
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            limits:
+              cpu: 2
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          ports:
+            - name: web
+              containerPort: 80
+              protocol: TCP
+          envFrom:            
+            - secretRef:
+                name: "zhaoyu-example-config"
+          env:            
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zhaoyu-example-postgresql
+                  key: postgresql-password
+            - name: ZHAOYU-EXAMPLE__METRICS__STATSD_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: ENV
+              value: dev
+            - name: LOGGING_ENV
+              value: dev
+            - name: LOGGING_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          livenessProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: web
+          readinessProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: web
+          volumeMounts:            
+            - name: dags-data
+              mountPath: /git
+            - name: webserver-config
+              mountPath: /opt/zhaoyu-example/webserver_config.py
+              subPath: webserver_config.py
+              readOnly: true
+      volumes:        
+        - name: dags-data
+          emptyDir: {}
+        - name: git-secret
+          secret:
+            secretName: zhaoyu-example-dags-repo-ssh-key
+            defaultMode: 0644
+        - name: webserver-config
+          secret:
+            secretName: zhaoyu-example-webserver-config
+            defaultMode: 0644
+---
+# Source: zhaoyu-example/charts/postgresql/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zhaoyu-example-postgresql
+  labels:
+    app: postgresql
+    chart: postgresql-8.6.4
+    release: "zhaoyu-example"
+    heritage: "Helm"
+spec:
+  serviceName: zhaoyu-example-postgresql-headless
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: postgresql
+      release: "zhaoyu-example"
+      role: master
+  template:
+    metadata:
+      name: zhaoyu-example-postgresql
+      labels:
+        app: postgresql
+        chart: postgresql-8.6.4
+        release: "zhaoyu-example"
+        heritage: "Helm"
+        role: master
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+    spec:      
+      securityContext:
+        fsGroup: 1001
+      initContainers:
+        # - name: do-something
+        #   image: busybox
+        #   command: ['do', 'something']
+        
+      containers:
+        - name: zhaoyu-example-postgresql
+          # image: docker.io/bitnami/postgresql:11.7.0-debian-10-r9
+          image: nginx:stable
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 2
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: POSTGRESQL_PORT_NUMBER
+              value: "4444"
+            - name: POSTGRESQL_VOLUME_DIR
+              value: "/bitnami/postgresql"
+            - name: PGDATA
+              value: "/bitnami/postgresql/data"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zhaoyu-example-postgresql
+                  key: postgresql-password
+            - name: POSTGRES_DB
+              value: "zhaoyu-example"
+            - name: POSTGRESQL_ENABLE_LDAP
+              value: "no"
+          ports:
+            - name: tcp-postgresql
+              containerPort: 80
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: data
+              mountPath: /bitnami/postgresql
+              subPath: 
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"
+---
+# Source: zhaoyu-example/templates/jobs/secret-job-scripts.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zhaoyu-example-job-scripts
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app: zhaoyu-example
+    component: jobs
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+stringData:
+  create_connections.py: |-
+    import os
+---
+# Source: zhaoyu-example/templates/jobs/job-create-users.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: zhaoyu-example-create-users
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app: zhaoyu-example
+    component: jobs
+    chart: zhaoyu-example-8.0.9
+    release: zhaoyu-example
+    heritage: Helm
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      annotations:
+      labels:
+        app: zhaoyu-example
+        component: jobs
+        chart: zhaoyu-example-8.0.9
+        release: zhaoyu-example
+        heritage: Helm
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-users          
+          image: busybox:stable
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 2
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            runAsUser: 50000
+            runAsGroup: 50000
+          envFrom:            
+            - secretRef:
+                name: "zhaoyu-example-config"
+          env:            
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zhaoyu-example-postgresql
+                  key: postgresql-password
+            - name: ZHAOYU-EXAMPLE__METRICS__STATSD_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: ENV
+              value: dev
+            - name: LOGGING_ENV
+              value: dev
+            - name: LOGGING_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          command:
+            - "echo"
+          args:
+            - "this-is-a-job"
+          volumeMounts:
+            - name: job-scripts
+              mountPath: /job_scripts
+              readOnly: true
+      volumes:
+        - name: job-scripts
+          secret:
+            secretName: zhaoyu-example-job-scripts
+            defaultMode: 0755
