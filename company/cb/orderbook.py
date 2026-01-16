@@ -1,3 +1,36 @@
+"""
+# Exercise 1: The Crypto Order Book
+*This is highly relevant to Coinbase. The goal is to build a simplified matching engine.*
+
+### Level 1: Basic Order Placement
+Implement a function `manageOrders` that accepts a list of operations. The only operation currently is `ADD_ORDER`.
+*   **Input:** `["ADD_ORDER", "id_1", "Buy", "100.0", "5"]` (Action, OrderID, Side, Price, Quantity).
+*   **Requirement:** Store the orders. Return the ID of the added order.
+*   **Focus:** Create a class or data structure to hold Order objects.
+
+### Level 2: Matching Logic (Exact Match)
+New requirements are added. If a "Sell" order comes in at a price **equal to or lower** than an existing "Buy" order (or vice versa), a trade occurs.
+*   **Logic:**
+    *   Iterate through existing orders to find a match.
+    *   For this level, assume only **one** trade happens per new order (no partial fills yet).
+    *   Remove the matched orders from the book.
+*   **Return:** If a trade happens, return string `"trade_executed"`. If not, return the Order ID.
+
+### Level 3: Partial Fills and Priority
+Now, an incoming order might be larger than the matching order on the book.
+*   **Logic:**
+    *   If a Buy order for 10 units matches a Sell order for 4 units, the Sell order is fully filled (removed), and the Buy order remains with 6 units.
+    *   **Priority:** You must match against the **best price** first. (Highest Buy price, Lowest Sell price). If prices are equal, match the oldest order first (FIFO).
+*   **Refactoring:** You likely need to switch from a simple List to a Priority Queue or a Sorted Map to handle price priority efficiently.
+
+### Level 4: Market Orders and Expiry
+New operation types: `MARKET_ORDER` and `CANCEL_ORDER`.
+*   `MARKET_ORDER`: Buys or sells immediately at the best available price, regardless of cost, until the quantity is filled or the book is empty.
+*   `CANCEL_ORDER`: Removes an order by ID.
+*   **Constraint:** You must handle high volumes. If your `CANCEL` logic is $O(N)$, you might time out. It needs to be closer to $O(1)$ or $O(\log N)$ (hint: use a Hash Map mapping ID to the order object).
+"""
+
+
 class OrderQueue:
     """
     OrderQueue is a convenient data structure to quickly find highest bid

@@ -1,3 +1,28 @@
+"""
+# Exercise 2: The In-Memory Database
+*This tests your ability to manage state and nested data structures.*
+
+### Level 1: Set and Get
+Implement a database that supports `SET` and `GET`.
+*   `SET field value`: Stores a value under a field name. Returns `""`.
+*   `GET field`: Returns the value. If not found, return `null`.
+
+### Level 2: Time-To-Live (TTL)
+Update `SET` to optionally accept a timestamp.
+*   `SET_AT field value timestamp`: The value is only valid if the current query time is `<` timestamp.
+*   `GET_AT field timestamp`: When retrieving, if the current timestamp provided is greater than the expiration, return `null`.
+
+### Level 3: Backups and Restores
+Add `BACKUP` and `RESTORE`.
+*   `BACKUP timestamp`: Saves the state of the database at that specific timestamp.
+*   `RESTORE timestamp`: Reverts the database to exactly how it looked at the time of that backup.
+*   **Challenge:** You cannot simply copy the whole database every time `BACKUP` is called (memory constraints). You need to store "deltas" or a history of changes.
+
+### Level 4: Analytics
+Add `MIN_VALUE` and `MAX_VALUE` within a field range.
+*   `SCAN_RANGE start_field end_field`: Return the count of records where the field name is alphabetically between start and end.
+*   **Optimization:** If you used a Hash Map for Level 1-3, Level 4 will force you to realize you need a Sorted Map (like a TreeMap in Java or C++) to perform range queries efficiently.
+"""
 import copy
 
 class Record:

@@ -1,3 +1,45 @@
+"""
+# Exercise 3: Transaction Validator
+*This tests your ability to handle state transitions and fraud detection.*
+
+### Level 1: Basic Transaction Processing
+Implement a function that processes bank transactions.
+- **Input:** List of operations: `["DEPOSIT", "account_id", "amount"]` or `["WITHDRAW", "account_id", "amount"]`
+- **Logic:** 
+  - Start all accounts at balance 0
+  - DEPOSIT adds to balance
+  - WITHDRAW subtracts (cannot go negative - return `"insufficient_funds"`)
+- **Return:** Current balance after operation, or error message
+
+### Level 2: Transaction Limits
+Add daily spending limits and transaction history.
+- **New Input:** `["SET_LIMIT", "account_id", "daily_limit"]`
+- **Logic:**
+  - Track total withdrawals per day per account
+  - If a withdrawal would exceed the daily limit, return `"limit_exceeded"`
+  - Transactions include timestamps: `["WITHDRAW", "account_id", "amount", "timestamp"]`
+  - Day boundaries reset at midnight (use timestamp to determine which day)
+- **Return:** Balance or appropriate error message
+
+### Level 3: Fraud Detection - Velocity Checks
+Detect suspicious patterns.
+- **Rules:**
+  - If more than 3 withdrawals occur within a 60-second window, flag as `"suspicious_activity"` and block the transaction
+  - If total withdrawal amount exceeds 2x the daily limit within any 1-hour window, flag as `"potential_fraud"`
+- **New Operation:** `["GET_STATUS", "account_id"]` returns `"active"`, `"flagged"`, or `"blocked"`
+- **Logic:** Once an account is flagged, all transactions require manual approval (return `"awaiting_approval"`)
+
+### Level 4: Multi-Currency and Exchange Rates
+Support multiple currencies with real-time conversion.
+- **New Format:** `["DEPOSIT", "account_id", "amount", "currency", "timestamp"]`
+- **New Operation:** `["SET_RATE", "from_currency", "to_currency", "rate", "timestamp"]`
+- **Logic:**
+  - Each account has a base currency (set on first transaction)
+  - All limits are calculated in the base currency
+  - When transacting in a different currency, use the most recent exchange rate at that timestamp
+  - Handle rate updates: `SET_RATE USD EUR 0.85 1000` means at timestamp 1000, 1 USD = 0.85 EUR
+- **Challenge:** Efficiently look up exchange rates by timestamp (binary search or sorted structure)
+"""
 import bisect
 from uu import Error
 
